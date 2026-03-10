@@ -1,337 +1,148 @@
-<!-- ULTIMATE TAB & REDIRECT BLOCKER - Place this FIRST in <head> -->
+<!-- NUCLEAR NAVIGATION BLOCKER - Blocks EVERYTHING -->
 <script>
 (function() {
     'use strict';
 
-    // Store original methods
+    // Store originals
     const originalOpen = window.open;
     const originalAssign = window.location.assign;
     const originalReplace = window.location.replace;
-    let lastRedirectAttempt = 0;
+    let currentUrl = window.location.href;
 
-    // Block ALL window.open attempts
-    window.open = function(url, target, features) {
-        console.warn('[Blocker] BLOCKED popup:', url || 'blank');
-        showNotification('🚫 Popup Blocked', url || 'unknown');
+    // BLOCK ALL window.open
+    window.open = function() {
+        console.warn('[BLOCKER] window.open blocked');
+        showBlockNotice('New Tab Blocked');
         return null;
     };
 
-    // Block location changes that happen too fast (redirect spam)
-    function blockSuspiciousNavigation() {
-        const now = Date.now();
-        if (now - lastRedirectAttempt < 1000) {
-            console.warn('[Blocker] BLOCKED rapid redirect');
-            return true;
-        }
-        lastRedirectAttempt = now;
-        return false;
-    }
+    // BLOCK location.assign
+    window.location.assign = function() {
+        console.warn('[BLOCKER] location.assign blocked');
+        showBlockNotice('Navigation Blocked');
+        return;
+    };
 
-    // Override location methods
-    Object.defineProperty(window.location, 'assign', {
-        value: function(url) {
-            if (blockSuspiciousNavigation() || isSuspiciousUrl(url)) {
-                showNotification('🚫 Redirect Blocked', url);
-                return;
-            }
-            console.log('[Blocker] Allowing assign to:', url);
-            return originalAssign.call(window.location, url);
-        },
-        writable: false,
-        configurable: false
-    });
+    // BLOCK location.replace
+    window.location.replace = function() {
+        console.warn('[BLOCKER] location.replace blocked');
+        showBlockNotice('Redirect Blocked');
+        return;
+    };
 
-    Object.defineProperty(window.location, 'replace', {
-        value: function(url) {
-            if (blockSuspiciousNavigation() || isSuspiciousUrl(url)) {
-                showNotification('🚫 Redirect Blocked', url);
-                return;
-            }
-            return originalReplace.call(window.location, url);
-        },
-        writable: false,
-        configurable: false
-    });
-
-    // Block href changes
-    let originalHref = window.location.href;
+    // BLOCK location.href setter
     Object.defineProperty(window.location, 'href', {
-        get: function() { return originalHref; },
-        set: function(url) {
-            if (blockSuspiciousNavigation() || isSuspiciousUrl(url)) {
-                showNotification('🚫 Navigation Blocked', url);
-                return;
-            }
-            originalHref = url;
-            window.location.assign(url);
+        get: function() { return currentUrl; },
+        set: function(val) {
+            console.warn('[BLOCKER] location.href blocked:', val);
+            showBlockNotice('Navigation Blocked');
+            return currentUrl;
         },
         configurable: false
     });
 
-    // Check if URL is suspicious (ad/redirect domains)
-    function isSuspiciousUrl(url) {
-        if (!url) return false;
-        const suspicious = [
-            'doubleclick.net', 'googlesyndication', 'googleadservices',
-            'facebook.com/tr', 'adsystem', 'amazon-adsystem',
-            'adnxs.com', 'adsrvr.org', 'advertising.com',
-            'outbrain.com', 'taboola.com', 'popads.net',
-            'onclickads.net', 'adsterra.com', 'propellerads',
-            'bit.ly', 'tinyurl', 'short.link', 't.co',
-            'goto', 'redirect', 'click', 'offer', 'survey',
-            'win', 'prize', 'lucky', 'winner', 'free',
-            'crypto', 'wallet', 'verify', 'login', 'signin',
-            'download', 'install', 'update', 'alert',
-            'tech-support', 'virus-detected', 'security',
-            'customer-service', 'support', 'help-desk',
-            'billing', 'payment', 'refund', 'suspended',
-            'unusual-activity', 'account-locked', 'verify-now'
-        ];
-        const lowerUrl = url.toLowerCase();
-        return suspicious.some(s => lowerUrl.includes(s));
-    }
-
-    // Block ALL link clicks that try to open new tabs or redirect
+    // BLOCK ALL clicks
     document.addEventListener('click', function(e) {
-        const link = e.target.closest('a');
-        if (!link) return;
-
-        const href = link.getAttribute('href');
-        const target = link.getAttribute('target');
-
-        // Block target="_blank"
-        if (target === '_blank') {
-            e.preventDefault();
-            e.stopPropagation();
-            console.warn('[Blocker] BLOCKED _blank link:', href);
-            showNotification('🚫 New Tab Blocked', href);
-            return false;
+        e.preventDefault();
+        e.stopPropagation();
+        
+        const target = e.target.closest('a');
+        if (target) {
+            console.warn('[BLOCKER] Link click blocked:', target.href);
+            showBlockNotice('Link Click Blocked');
         }
+        return false;
+    }, true);
 
-        // Block suspicious hrefs
-        if (href && (href.startsWith('javascript:') || href.startsWith('data:') || isSuspiciousUrl(href))) {
+    // BLOCK form submissions
+    document.addEventListener('submit', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        console.warn('[BLOCKER] Form submission blocked');
+        showBlockNotice('Form Blocked');
+        return false;
+    }, true);
+
+    // BLOCK mousedown (catches middle-click, ctrl+click)
+    document.addEventListener('mousedown', function(e) {
+        if (e.button !== 0) { // Not left click
             e.preventDefault();
             e.stopPropagation();
-            console.warn('[Blocker] BLOCKED suspicious link:', href);
-            showNotification('🚫 Malicious Link Blocked', href);
-            return false;
-        }
-
-        // Block if clicking on iframe or within iframe
-        if (e.target.tagName === 'IFRAME' || window.self !== window.top) {
-            e.preventDefault();
-            e.stopPropagation();
-            console.warn('[Blocker] BLOCKED iframe click');
+            console.warn('[BLOCKER] Non-left click blocked');
             return false;
         }
     }, true);
 
-    // Block beforeunload hijacking
-    window.addEventListener('beforeunload', function(e) {
-        if (!window.__allowUnload) {
-            e.preventDefault();
-            e.returnValue = '';
-        }
-    });
-
-    // Monitor for iframe navigation attempts
-    window.addEventListener('message', function(e) {
-        // Block messages that might trigger redirects
-        if (typeof e.data === 'string' && isSuspiciousUrl(e.data)) {
-            console.warn('[Blocker] BLOCKED suspicious postMessage:', e.data);
-            e.stopPropagation();
-            e.preventDefault();
-        }
-    }, true);
-
-    // Block popstate manipulation
-    window.addEventListener('popstate', function(e) {
-        if (blockSuspiciousNavigation()) {
-            history.pushState(null, '', window.location.href);
-            console.warn('[Blocker] BLOCKED back-button hijack');
-        }
-    });
-
-    // Remove meta refresh tags
-    function removeMetaRefresh() {
-        document.querySelectorAll('meta[http-equiv="refresh"]').forEach(meta => {
-            console.warn('[Blocker] REMOVED meta refresh');
-            meta.remove();
-        });
-    }
-    removeMetaRefresh();
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', removeMetaRefresh);
-    }
-
-    // Block right-click on iframes
+    // BLOCK context menu everywhere
     document.addEventListener('contextmenu', function(e) {
-        if (e.target.tagName === 'IFRAME') {
+        e.preventDefault();
+        console.warn('[BLOCKER] Right-click blocked');
+        return false;
+    }, true);
+
+    // BLOCK keyboard shortcuts that open new tabs
+    document.addEventListener('keydown', function(e) {
+        // Ctrl+T, Ctrl+N, Ctrl+Click equivalents
+        if ((e.ctrlKey || e.metaKey) && (e.key === 't' || e.key === 'n')) {
             e.preventDefault();
+            e.stopPropagation();
+            console.warn('[BLOCKER] Keyboard shortcut blocked');
             return false;
         }
     }, true);
 
-    // Notification function
-    function showNotification(title, source) {
-        const existing = document.getElementById('blocker-notice');
+    // BLOCK beforeunload manipulation
+    window.addEventListener('beforeunload', function(e) {
+        e.preventDefault();
+        e.returnValue = '';
+    });
+
+    // BLOCK popstate (back/forward button hijacks)
+    window.addEventListener('popstate', function(e) {
+        history.pushState(null, '', currentUrl);
+        console.warn('[BLOCKER] History manipulation blocked');
+    });
+
+    // BLOCK postMessage
+    window.addEventListener('message', function(e) {
+        e.stopPropagation();
+        e.preventDefault();
+        console.warn('[BLOCKER] postMessage blocked');
+    }, true);
+
+    // Remove meta refresh immediately
+    document.querySelectorAll('meta[http-equiv="refresh"]').forEach(m => m.remove());
+
+    // Notification
+    function showBlockNotice(type) {
+        const id = 'nuke-blocker-notice';
+        const existing = document.getElementById(id);
         if (existing) existing.remove();
 
         const div = document.createElement('div');
-        div.id = 'blocker-notice';
+        div.id = id;
         div.innerHTML = `
             <div style="
                 position: fixed;
                 top: 20px;
                 right: 20px;
-                background: #dc2626;
-                color: white;
-                padding: 15px 20px;
-                border-radius: 8px;
-                font-family: sans-serif;
-                font-size: 14px;
+                background: #7f1d1d;
+                color: #fecaca;
+                padding: 12px 20px;
+                border-radius: 6px;
+                font-family: monospace;
+                font-size: 13px;
                 z-index: 2147483647;
-                box-shadow: 0 4px 12px rgba(0,0,0,0.5);
-                max-width: 350px;
-                border: 2px solid #b91c1c;
-                animation: blockerSlide 0.2s ease;
+                border: 2px solid #dc2626;
+                box-shadow: 0 4px 20px rgba(220,38,38,0.4);
             ">
-                <strong>${title}</strong><br>
-                <span style="font-size: 12px; opacity: 0.9; word-break: break-all;">
-                    ${String(source).substring(0, 60)}${String(source).length > 60 ? '...' : ''}
-                </span>
+                <strong style="color: #fff;">🔒 ${type}</strong>
             </div>
         `;
-        
-        if (!document.getElementById('blocker-styles')) {
-            const style = document.createElement('style');
-            style.id = 'blocker-styles';
-            style.textContent = `
-                @keyframes blockerSlide {
-                    from { transform: translateX(400px); opacity: 0; }
-                    to { transform: translateX(0); opacity: 1; }
-                }
-            `;
-            document.head.appendChild(style);
-        }
-
         document.body.appendChild(div);
-        setTimeout(() => div.remove(), 3000);
+        setTimeout(() => div.remove(), 2000);
     }
 
-    // If this is a popup that opened before protection, close it
-    if (window.opener && window.opener !== window && window.history.length <= 1) {
-        console.warn('[Blocker] Closing pre-existing popup');
-        window.close();
-    }
-
-    console.log('[Blocker] ULTIMATE MODE ACTIVE - All redirects & popups blocked');
+    console.log('[BLOCKER] ☢️ NUCLEAR MODE ACTIVE - All navigation blocked');
 })();
 </script>
-    // Block context menu on links to prevent "Open in new tab"
-    document.addEventListener('contextmenu', function(e) {
-        const link = e.target.closest('a');
-        if (link) {
-            e.preventDefault();
-            console.warn('[Tab Blocker] BLOCKED right-click menu');
-            return false;
-        }
-    }, true);
-
-    // Block window.location methods that open new windows
-    Object.defineProperty(window.location, 'assign', {
-        value: function(url) {
-            if (url && (url.includes('blank') || url === 'about:blank')) {
-                console.warn('[Tab Blocker] BLOCKED location.assign');
-                showBlockedNotification('Location assign blocked');
-                return;
-            }
-            return originalAssign.apply(this, arguments);
-        },
-        writable: false,
-        configurable: false
-    });
-
-    Object.defineProperty(window.location, 'replace', {
-        value: function(url) {
-            if (url && (url.includes('blank') || url === 'about:blank')) {
-                console.warn('[Tab Blocker] BLOCKED location.replace');
-                showBlockedNotification('Location replace blocked');
-                return;
-            }
-            return originalReplace.apply(this, arguments);
-        },
-        writable: false,
-        configurable: false
-    });
-
-    // Block beforeunload hijacking
-    window.addEventListener('beforeunload', function(e) {
-        // Prevent the "Are you sure you want to leave" spam
-        if (!window.__allowUnload) {
-            e.preventDefault();
-            e.returnValue = '';
-        }
-    });
-
-    // Notification function
-    function showBlockedNotification(source) {
-        // Remove existing notifications
-        const existing = document.getElementById('tab-blocker-notice');
-        if (existing) existing.remove();
-
-        const div = document.createElement('div');
-        div.id = 'tab-blocker-notice';
-        div.innerHTML = `
-            <div style="
-                position: fixed;
-                top: 20px;
-                right: 20px;
-                background: #ff0000;
-                color: white;
-                padding: 15px 20px;
-                border-radius: 8px;
-                font-family: sans-serif;
-                font-size: 14px;
-                z-index: 2147483647;
-                box-shadow: 0 4px 12px rgba(0,0,0,0.5);
-                max-width: 350px;
-                border: 2px solid #cc0000;
-                animation: tabBlockerSlide 0.2s ease;
-            ">
-                <strong>🚫 TAB BLOCKED</strong><br>
-                <span style="font-size: 12px; opacity: 0.9; word-break: break-all;">
-                    ${String(source).substring(0, 60)}${String(source).length > 60 ? '...' : ''}
-                </span>
-            </div>
-        `;
-        
-        // Add animation styles
-        if (!document.getElementById('tab-blocker-styles')) {
-            const style = document.createElement('style');
-            style.id = 'tab-blocker-styles';
-            style.textContent = `
-                @keyframes tabBlockerSlide {
-                    from { transform: translateX(400px); opacity: 0; }
-                    to { transform: translateX(0); opacity: 1; }
-                }
-            `;
-            document.head.appendChild(style);
-        }
-
-        document.body.appendChild(div);
-        
-        // Auto-remove after 2 seconds
-        setTimeout(() => {
-            if (div.parentNode) div.remove();
-        }, 2000);
-    }
-
-    // Kill any existing popups that might have opened before this script loaded
-    if (window.opener && window.opener !== window) {
-        console.warn('[Tab Blocker] Closing popup that opened before protection');
-        window.close();
-    }
-
-    console.log('[Tab Blocker] STRICT MODE - All popups blocked');
-})();
