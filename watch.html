@@ -334,14 +334,16 @@
                     <!-- video player -->
                     <div class="bg-gray-800 rounded-lg overflow-hidden">
                         <div class="relative pt-[56.25%]" id="player-container">
-                            <iframe x-bind:src="currentVideoUrl" 
-                                    class="absolute top-0 left-0 w-full h-full" 
-                                    frameborder="0" 
-                                    scrolling="no" 
-                                    @error="checkProviderStatus()"
-                                    @load="handleProviderLoad()"
-                                    allowfullscreen>
-                            </iframe>
+                            <iframe x-bind:src="currentVideoUrl"
+                            class="absolute top-0 left-0 w-full h-full"
+                            frameborder="0"
+                            scrolling="no"
+                            sandbox="allow-scripts allow-same-origin allow-presentation"
+                            referrerpolicy="no-referrer"
+                            @error="checkProviderStatus()"
+                           @load="handleProviderLoad()"
+                           allowfullscreen>
+                           </iframe>
                             <button @click="toggleWatchLater(content)" 
                                     class="absolute top-2 right-2 p-1.5 md:p-2 bg-gray-900 bg-opacity-75 rounded-full hover:bg-purple-600 transition-colors duration-300"
                                     :class="isInWatchLater(content) ? 'text-purple-400' : 'text-white'">
