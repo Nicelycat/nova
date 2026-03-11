@@ -335,15 +335,18 @@
                     <div class="bg-gray-800 rounded-lg overflow-hidden">
                         <div class="relative pt-[56.25%]" id="player-container">
                             <iframe x-bind:src="currentVideoUrl"
-                            class="absolute top-0 left-0 w-full h-full"
-                            frameborder="0"
-                            scrolling="no"
-                            sandbox="allow-scripts allow-same-origin allow-presentation allow-popups-to-escape-sandbox"
-                            allow="autoplay; fullscreen; encrypted-media; picture-in-picture"
-                            referrerpolicy="no-referrer"
-                            loading="lazy"
-                            allowfullscreen>
-                            </iframe>
+                                    class="absolute top-0 left-0 w-full h-full pointer-events-auto"
+                                    frameborder="0"
+                                    scrolling="no"
+                                    sandbox="allow-scripts allow-same-origin allow-presentation allow-popups-to-escape-sandbox"
+                                    allow="autoplay; fullscreen; encrypted-media; picture-in-picture"
+                                    referrerpolicy="no-referrer"
+                                    credentialss="omit"
+                                    loading="lazy"
+                                    style="pointer-events: auto;"
+                                    allowfullscreen>
+                           </iframe>
+
 
                             <button @click="toggleWatchLater(content)" 
                                     class="absolute top-2 right-2 p-1.5 md:p-2 bg-gray-900 bg-opacity-75 rounded-full hover:bg-purple-600 transition-colors duration-300"
